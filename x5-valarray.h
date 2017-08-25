@@ -16,6 +16,9 @@
 namespace X5 {
 
 
+  class LocationTypeException : public std::runtime_error { };
+
+
   std::vector<std::string> split(const std::string &s, const std::string &d) {
     // Split a string by every occurrence of a delimiter (discarding the delimiter)
     std::vector<std::string> ss;
@@ -70,7 +73,16 @@ namespace X5 {
 
 
     template <typename T>
-    std::valarray<T> fetch() { }
+    std::valarray<T> fetch() {
+      std::valarray<T> v;
+      H5O_info_t info;
+      H5Oget_info(location->getId(), &info);
+      if (info.type == H5O_TYPE_DATASET) {
+        std::cout << "opening dataset" << std::endl;
+      } else {
+        throw LocationTypeException(std::string(location) + " is not a dataset");
+      }
+    }
 
 
     template <typename T>
@@ -79,11 +91,28 @@ namespace X5 {
 
     Location operator[](std::string path) {
       std::string next = partial_split(path, "/");
-      try {
-        // Open or something
-      } catch (...) {
+      // Does the next step exist
+      if (H5Oexists_by_name(location->getId(), next.c_str(), H5P_DEFAULT) > 0) {
+        H5O_info_t info;
+        H5Oget_info_by_name(location->getId(), next.c_str(), &info, H5P_DEFAULT);
+        std::shared_ptr<H5::H5Location> next_location;
+        switch (info.type) {
+        case H5O_TYPE_DATASET:
+          next_location = make_shared(std::static_pointer_cast<H5::H5Location>(location->openDataSet(next)));
+          break;
+        case H5O_TYPE_GROUP:
+          break;
+        default:
+          std::cerr << "Unsupported datatype " << info.type << std::endl;
+        }
+      } else {
         return nowhere;
       }
+      // if (H5Oexists_by_name(id_location, next.c_str(), H5P_DEFAULT) > 0) {
+        // return Location(file, H5Oopen(location, next.c_str(), H5P_DEFAULT));
+      // } else {
+        // return nowhere;
+      // }
       Location l;
       if (path.size() == 0)
         return l;
