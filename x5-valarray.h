@@ -98,9 +98,10 @@ namespace X5 {
         std::shared_ptr<H5::H5Location> next_location;
         switch (info.type) {
         case H5O_TYPE_DATASET:
-          next_location = make_shared(std::static_pointer_cast<H5::H5Location>(location->openDataSet(next)));
+          next_location = std::static_pointer_cast<H5::H5Location>(std::make_shared<H5::DataSet>(std::dynamic_pointer_cast<H5::CommonFG>(location)->openDataSet(next)));
           break;
         case H5O_TYPE_GROUP:
+          next_location = std::static_pointer_cast<H5::H5Location>(std::make_shared<H5::Group>(std::dynamic_pointer_cast<H5::CommonFG>(location)->openGroup(next)));
           break;
         default:
           std::cerr << "Unsupported datatype " << info.type << std::endl;
